@@ -1,0 +1,13 @@
+﻿snapshot_count: 8
+snapshot_interval_seconds: 1.0
+suspicion_threshold: 0.65
+min_hits: 5
+min_distinct_local_ports: 3
+log_file: logs/secopsbuddy.log
+dry_run: true
+block_private_ips: false
+collector_command_preference:
+  - ss_tunp
+  - ss_tun
+  - ss_tpn
+  - netstat_tunp
