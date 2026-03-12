@@ -1,5 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+import ipaddress
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -18,6 +19,7 @@ class AppConfig:
     min_hits: int = 5
     min_distinct_local_ports: int = 3
     monitor_loop_interval_seconds: float = 5.0
+    alert_cooldown_seconds: int = 120
     log_file: str = "logs/secopsbuddy.log"
     log_error_file: str = "logs/errors.log"
     log_results_file: str = "logs/results.log"
@@ -30,6 +32,11 @@ class AppConfig:
     bot_error_log_file: str = "logs/bot_errors.log"
     dry_run: bool = True
     block_private_ips: bool = False
+    allowed_remote_ips: list[str] = field(default_factory=list)
+    allowed_remote_ports: list[int] = field(default_factory=list)
+    allowed_process_names: list[str] = field(default_factory=list)
+    allowed_cidrs: list[str] = field(default_factory=list)
+    suppressed_ports: list[int] = field(default_factory=list)
     collector_command_preference: list[str] = field(
         default_factory=lambda: ["ss_tunp", "ss_tun", "ss_tpn", "netstat_tunp"]
     )
@@ -62,6 +69,9 @@ class AppConfig:
                         defaults.monitor_loop_interval_seconds,
                     )
                 ),
+                alert_cooldown_seconds=int(
+                    raw.get("alert_cooldown_seconds", defaults.alert_cooldown_seconds)
+                ),
                 log_file=str(raw.get("log_file", defaults.log_file)),
                 log_error_file=str(raw.get("log_error_file", defaults.log_error_file)),
                 log_results_file=str(raw.get("log_results_file", defaults.log_results_file)),
@@ -75,6 +85,27 @@ class AppConfig:
                 dry_run=_parse_bool(raw.get("dry_run", defaults.dry_run)),
                 block_private_ips=_parse_bool(
                     raw.get("block_private_ips", defaults.block_private_ips)
+                ),
+                allowed_remote_ips=_parse_string_list(
+                    raw.get("allowed_remote_ips", defaults.allowed_remote_ips),
+                    field_name="allowed_remote_ips",
+                ),
+                allowed_remote_ports=_parse_port_list(
+                    raw.get("allowed_remote_ports", defaults.allowed_remote_ports),
+                    field_name="allowed_remote_ports",
+                ),
+                allowed_process_names=_parse_string_list(
+                    raw.get("allowed_process_names", defaults.allowed_process_names),
+                    field_name="allowed_process_names",
+                    lower=True,
+                ),
+                allowed_cidrs=_parse_cidr_list(
+                    raw.get("allowed_cidrs", defaults.allowed_cidrs),
+                    field_name="allowed_cidrs",
+                ),
+                suppressed_ports=_parse_port_list(
+                    raw.get("suppressed_ports", defaults.suppressed_ports),
+                    field_name="suppressed_ports",
                 ),
                 collector_command_preference=_parse_command_preference(
                     raw.get(
@@ -98,6 +129,8 @@ class AppConfig:
             raise ConfigError("min_distinct_local_ports должен быть > 0")
         if config.monitor_loop_interval_seconds < 0:
             raise ConfigError("monitor_loop_interval_seconds должен быть >= 0")
+        if config.alert_cooldown_seconds < 0:
+            raise ConfigError("alert_cooldown_seconds должен быть >= 0")
 
         _ensure_path_value(config.log_file, "log_file")
         _ensure_path_value(config.log_error_file, "log_error_file")
@@ -140,6 +173,49 @@ def _parse_command_preference(value: object) -> list[str]:
             raise ValueError("collector_command_preference не должен быть пустым")
         return items
     raise ValueError("collector_command_preference должен быть списком ключей команд")
+
+
+def _parse_string_list(
+    value: object,
+    field_name: str,
+    lower: bool = False,
+) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, (list, tuple, set)):
+        raise ValueError(f"{field_name} должен быть списком")
+
+    items: list[str] = []
+    for item in value:
+        text = str(item).strip()
+        if not text:
+            continue
+        items.append(text.lower() if lower else text)
+    return list(dict.fromkeys(items))
+
+
+def _parse_port_list(value: object, field_name: str) -> list[int]:
+    if value is None:
+        return []
+    if not isinstance(value, (list, tuple, set)):
+        raise ValueError(f"{field_name} должен быть списком портов")
+
+    ports: list[int] = []
+    for item in value:
+        port = int(item)
+        if port <= 0 or port > 65535:
+            raise ValueError(f"{field_name}: порт вне диапазона 1..65535: {port}")
+        ports.append(port)
+    return list(dict.fromkeys(ports))
+
+
+def _parse_cidr_list(value: object, field_name: str) -> list[str]:
+    cidrs = _parse_string_list(value, field_name=field_name)
+    normalized: list[str] = []
+    for cidr in cidrs:
+        network = ipaddress.ip_network(cidr, strict=False)
+        normalized.append(str(network))
+    return list(dict.fromkeys(normalized))
 
 
 def get_default_config_path() -> Path:

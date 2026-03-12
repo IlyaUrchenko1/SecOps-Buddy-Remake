@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from secopsbuddy.config import AppConfig
 from secopsbuddy.detectors.t1030 import T1030Detector
@@ -74,6 +74,30 @@ def test_t1030_detector_clean_when_no_candidates() -> None:
     ]
 
     config = AppConfig(snapshot_count=1, snapshot_interval_seconds=0.0)
+    detector = T1030Detector(config=config, collector=FakeCollector(snapshots))
+
+    result = detector.run()
+
+    assert result.status == "clean"
+    assert result.findings == []
+
+
+def test_t1030_detector_respects_allowlist() -> None:
+    snapshots: list[list[ConnectionRecord]] = []
+    for index in range(6):
+        snapshots.append([
+            _record(index, 45000 + index, "93.184.216.34"),
+            _record(index, 52000 + index, "93.184.216.34"),
+        ])
+
+    config = AppConfig(
+        snapshot_count=6,
+        snapshot_interval_seconds=0.0,
+        suspicion_threshold=0.55,
+        min_hits=4,
+        min_distinct_local_ports=3,
+        allowed_remote_ips=["93.184.216.34"],
+    )
     detector = T1030Detector(config=config, collector=FakeCollector(snapshots))
 
     result = detector.run()

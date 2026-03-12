@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import ipaddress
 import logging
@@ -46,6 +46,13 @@ class T1030Detector(BaseDetector):
             command_preference=config.collector_command_preference,
             logger=self.logger,
         )
+        self.allowed_remote_ips = set(config.allowed_remote_ips)
+        self.allowed_remote_ports = set(config.allowed_remote_ports)
+        self.allowed_process_names = {name.lower() for name in config.allowed_process_names}
+        self.allowed_cidrs = tuple(
+            ipaddress.ip_network(cidr, strict=False) for cidr in config.allowed_cidrs
+        )
+        self.suppressed_local_ports = set(config.suppressed_ports)
 
     def run(self) -> DetectionResult:
         timestamp = utc_now_iso()
@@ -166,6 +173,8 @@ class T1030Detector(BaseDetector):
             for conn in snapshot:
                 if not self._is_outbound_candidate(conn):
                     continue
+                if self._is_allowlisted(conn):
+                    continue
 
                 remote_ip = conn.remote_ip or "unknown"
                 key = (remote_ip, conn.remote_port, conn.proto.lower(), conn.process_name)
@@ -197,6 +206,31 @@ class T1030Detector(BaseDetector):
         if conn.remote_ip in {"0.0.0.0", "::", "*"}:
             return False
         return True
+
+    def _is_allowlisted(self, conn: ConnectionRecord) -> bool:
+        remote_ip = conn.remote_ip
+        process_name = (conn.process_name or "").lower()
+
+        # Allowlist-потоки полностью исключаются до scoring,
+        # чтобы безопасные шаблоны не раздували T1030-подозрения.
+        if remote_ip in self.allowed_remote_ips:
+            return True
+        if conn.remote_port in self.allowed_remote_ports:
+            return True
+        if conn.local_port in self.suppressed_local_ports:
+            return True
+        if process_name and process_name in self.allowed_process_names:
+            return True
+        if remote_ip and self._ip_in_allowed_cidrs(remote_ip):
+            return True
+        return False
+
+    def _ip_in_allowed_cidrs(self, ip_raw: str) -> bool:
+        try:
+            ip_obj = ipaddress.ip_address(ip_raw)
+        except ValueError:
+            return False
+        return any(ip_obj in network for network in self.allowed_cidrs)
 
     def _score_group(self, metrics: _GroupMetrics, total_snapshots: int) -> tuple[float, list[str]]:
         reasons: list[str] = []

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import logging
@@ -14,6 +14,7 @@ from secopsbuddy.logging_setup import (
     get_mitre_logger,
     get_results_logger,
 )
+from secopsbuddy.models import DetectionFinding
 from secopsbuddy.registry import DetectorRegistry
 from secopsbuddy.responders.alert import AlertResponder
 from secopsbuddy.responders.firewall import FirewallResponder
@@ -40,6 +41,8 @@ class DetectionRunner:
             ]
         )
         self._blocked_ips: set[str] = set()
+        self._alert_history: dict[str, float] = {}
+        self._alert_cooldown_seconds = max(0, int(self.config.alert_cooldown_seconds))
 
     def run(
         self,
@@ -86,6 +89,7 @@ class DetectionRunner:
                 json_output=json_output,
                 dry_run_override=dry_run_override,
                 cycle_number=1,
+                apply_alert_cooldown=False,
             )
             if not json_output:
                 print("Подсказка: для постоянного мониторинга используйте --continuous.")
@@ -119,11 +123,12 @@ class DetectionRunner:
             "Нажмите Ctrl+C для остановки."
         )
         self.logger.info(
-            "Старт непрерывного мониторинга: detector=%s mode=%s interval=%s max_cycles=%s",
+            "Старт непрерывного мониторинга: detector=%s mode=%s interval=%s max_cycles=%s cooldown=%s",
             detector.detector_id,
             mode,
             monitor_interval_seconds,
             max_cycles,
+            self._alert_cooldown_seconds,
         )
 
         cycle = 0
@@ -140,6 +145,7 @@ class DetectionRunner:
                     json_output=json_output,
                     dry_run_override=dry_run_override,
                     cycle_number=cycle,
+                    apply_alert_cooldown=True,
                 )
                 max_exit_code = max(max_exit_code, code)
 
@@ -163,6 +169,7 @@ class DetectionRunner:
         json_output: bool,
         dry_run_override: bool | None,
         cycle_number: int,
+        apply_alert_cooldown: bool,
     ) -> int:
         self.logger.info(
             "Старт цикла: detector=%s mode=%s cycle=%s dry_run_override=%s",
@@ -184,6 +191,22 @@ class DetectionRunner:
             cycle_number,
         )
 
+        findings_for_alerts, suppressed_count = self._apply_alert_cooldown(
+            mitre_id=result.mitre_id,
+            findings=result.findings,
+            enabled=apply_alert_cooldown,
+        )
+
+        if suppressed_count > 0:
+            self.logger.info(
+                "Cooldown подавил повторные алерты: detector=%s mitre=%s cycle=%s suppressed=%s cooldown=%s",
+                result.detector_id,
+                result.mitre_id,
+                cycle_number,
+                suppressed_count,
+                self._alert_cooldown_seconds,
+            )
+
         findings_payload = [
             {
                 "remote_ip": item.remote_ip,
@@ -196,20 +219,30 @@ class DetectionRunner:
                 "score": item.score,
                 "reasons": item.reasons,
             }
-            for item in result.findings
+            for item in findings_for_alerts
         ]
+
+        event_status = result.status
+        event_summary = result.summary
+        if result.status == "suspicious" and not findings_for_alerts and suppressed_count > 0:
+            event_status = "clean"
+            event_summary = (
+                f"{result.summary} Повторные алерты подавлены cooldown "
+                f"({suppressed_count})."
+            )
 
         result_event = {
             "event": "detection_result",
             "cycle": cycle_number,
             "detector_id": result.detector_id,
             "mitre_id": result.mitre_id,
-            "status": result.status,
+            "status": event_status,
             "score": result.score,
-            "findings_count": len(result.findings),
+            "findings_count": len(findings_for_alerts),
+            "suppressed_findings_count": suppressed_count,
             "findings": findings_payload,
             "timestamp": result.timestamp,
-            "summary": result.summary,
+            "summary": event_summary,
             "mode": mode,
         }
         self.results_logger.info(json.dumps(result_event, ensure_ascii=False))
@@ -265,6 +298,51 @@ class DetectionRunner:
         if result.status == "error":
             return 1
         return 0
+
+    def _apply_alert_cooldown(
+        self,
+        mitre_id: str,
+        findings: list[DetectionFinding],
+        enabled: bool,
+    ) -> tuple[list[DetectionFinding], int]:
+        if not findings or not enabled or self._alert_cooldown_seconds <= 0:
+            return findings, 0
+
+        now_ts = time.time()
+        self._prune_alert_history(now_ts)
+
+        filtered: list[DetectionFinding] = []
+        suppressed = 0
+
+        for finding in findings:
+            fingerprint = self._build_alert_fingerprint(mitre_id, finding)
+            last_ts = self._alert_history.get(fingerprint)
+            if last_ts is not None and (now_ts - last_ts) < self._alert_cooldown_seconds:
+                suppressed += 1
+                continue
+
+            self._alert_history[fingerprint] = now_ts
+            filtered.append(finding)
+
+        return filtered, suppressed
+
+    def _build_alert_fingerprint(self, mitre_id: str, finding: DetectionFinding) -> str:
+        process_name = (finding.process_name or "-").lower()
+        remote_port = finding.remote_port if finding.remote_port is not None else "-"
+        return f"{mitre_id}:{finding.remote_ip}:{remote_port}:{process_name}"
+
+    def _prune_alert_history(self, now_ts: float) -> None:
+        if not self._alert_history:
+            return
+
+        ttl = max(self._alert_cooldown_seconds * 10, self._alert_cooldown_seconds + 1)
+        stale = [
+            fingerprint
+            for fingerprint, ts in self._alert_history.items()
+            if (now_ts - ts) > ttl
+        ]
+        for fingerprint in stale:
+            self._alert_history.pop(fingerprint, None)
 
     def _publish_lifecycle_event(
         self,
