@@ -17,7 +17,13 @@ class AppConfig:
     suspicion_threshold: float = 0.65
     min_hits: int = 5
     min_distinct_local_ports: int = 3
+    monitor_loop_interval_seconds: float = 5.0
     log_file: str = "logs/secopsbuddy.log"
+    log_error_file: str = "logs/errors.log"
+    log_results_file: str = "logs/results.log"
+    log_actions_file: str = "logs/actions.log"
+    log_events_file: str = "logs/events.log"
+    mitre_log_dir: str = "logs/mitre"
     dry_run: bool = True
     block_private_ips: bool = False
     collector_command_preference: list[str] = field(
@@ -46,7 +52,18 @@ class AppConfig:
                         defaults.min_distinct_local_ports,
                     )
                 ),
+                monitor_loop_interval_seconds=float(
+                    raw.get(
+                        "monitor_loop_interval_seconds",
+                        defaults.monitor_loop_interval_seconds,
+                    )
+                ),
                 log_file=str(raw.get("log_file", defaults.log_file)),
+                log_error_file=str(raw.get("log_error_file", defaults.log_error_file)),
+                log_results_file=str(raw.get("log_results_file", defaults.log_results_file)),
+                log_actions_file=str(raw.get("log_actions_file", defaults.log_actions_file)),
+                log_events_file=str(raw.get("log_events_file", defaults.log_events_file)),
+                mitre_log_dir=str(raw.get("mitre_log_dir", defaults.mitre_log_dir)),
                 dry_run=_parse_bool(raw.get("dry_run", defaults.dry_run)),
                 block_private_ips=_parse_bool(
                     raw.get("block_private_ips", defaults.block_private_ips)
@@ -71,8 +88,22 @@ class AppConfig:
             raise ConfigError("min_hits должен быть > 0")
         if config.min_distinct_local_ports <= 0:
             raise ConfigError("min_distinct_local_ports должен быть > 0")
+        if config.monitor_loop_interval_seconds < 0:
+            raise ConfigError("monitor_loop_interval_seconds должен быть >= 0")
+
+        _ensure_path_value(config.log_file, "log_file")
+        _ensure_path_value(config.log_error_file, "log_error_file")
+        _ensure_path_value(config.log_results_file, "log_results_file")
+        _ensure_path_value(config.log_actions_file, "log_actions_file")
+        _ensure_path_value(config.log_events_file, "log_events_file")
+        _ensure_path_value(config.mitre_log_dir, "mitre_log_dir")
 
         return config
+
+
+def _ensure_path_value(value: str, field_name: str) -> None:
+    if not value or not value.strip():
+        raise ConfigError(f"{field_name} не должен быть пустым")
 
 
 def _parse_bool(value: object) -> bool:

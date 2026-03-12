@@ -21,6 +21,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Режим запуска: monitor или block",
     )
     parser.add_argument(
+        "--continuous",
+        action="store_true",
+        help="Непрерывный мониторинг в цикле",
+    )
+    parser.add_argument(
+        "--monitor-interval-seconds",
+        type=float,
+        default=None,
+        help="Пауза между циклами мониторинга",
+    )
+    parser.add_argument(
+        "--max-cycles",
+        type=int,
+        default=None,
+        help="Ограничение числа циклов для continuous режима",
+    )
+    parser.add_argument(
         "--config",
         metavar="PATH",
         default=None,

@@ -43,5 +43,6 @@ def create_default_registry(
     logger: logging.Logger | None = None,
 ) -> DetectorRegistry:
     registry = DetectorRegistry()
-    registry.register(T1030Detector(config=config, logger=logger))
+    detector_logger = logger.getChild("detector.t1030") if logger else None
+    registry.register(T1030Detector(config=config, logger=detector_logger))
     return registry

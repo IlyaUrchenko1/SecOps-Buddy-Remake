@@ -3,7 +3,13 @@ snapshot_interval_seconds: 1.0
 suspicion_threshold: 0.65
 min_hits: 5
 min_distinct_local_ports: 3
+monitor_loop_interval_seconds: 5.0
 log_file: logs/secopsbuddy.log
+log_error_file: logs/errors.log
+log_results_file: logs/results.log
+log_actions_file: logs/actions.log
+log_events_file: logs/events.log
+mitre_log_dir: logs/mitre
 dry_run: true
 block_private_ips: false
 collector_command_preference:
