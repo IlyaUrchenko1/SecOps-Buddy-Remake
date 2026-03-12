@@ -43,3 +43,12 @@ sudo python -m secopsbuddy.main --run t1030 --continuous --mode block
 ```bash
 python -m secopsbuddy.main --run t1030 --continuous --mode block --dry-run
 ```
+
+## Telegram уведомления
+
+При наличии запущенного `run_bot`:
+
+- при старте детектора отправляется уведомление `detector_started`
+- при остановке детектора отправляется уведомление `detector_stopped`
+- при suspicious результате отправляется полный alert
+- при успешной блокировке отправляется уведомление `threat_mitigated`

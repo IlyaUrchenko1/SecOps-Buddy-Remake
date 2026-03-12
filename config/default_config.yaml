@@ -10,6 +10,10 @@ log_results_file: logs/results.log
 log_actions_file: logs/actions.log
 log_events_file: logs/events.log
 mitre_log_dir: logs/mitre
+bot_events_file: runtime/bot_events.jsonl
+bot_pid_file: runtime/bot.pid
+bot_log_file: logs/bot.log
+bot_error_log_file: logs/bot_errors.log
 dry_run: true
 block_private_ips: false
 collector_command_preference:

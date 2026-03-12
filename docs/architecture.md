@@ -12,7 +12,13 @@
 - `secopsbuddy/responders/alert.py`: форматирование вывода
 - `secopsbuddy/responders/firewall.py`: блокировка IP через `ufw`/`iptables`
 - `secopsbuddy/logging_setup.py`: многоканальное логирование
-- `secopsbuddy/event_dispatcher.py`: шина событий и sink-механизм для масштабирования
+- `secopsbuddy/event_dispatcher.py`: шина событий и sink-механизм
+- `secopsbuddy/bot/worker.py`: aiogram polling worker
+- `secopsbuddy/bot/control.py`: управление бот-процессом (`run_bot`)
+- `secopsbuddy/bot/handlers.py`: handlers команд и callback
+- `secopsbuddy/bot/keyboards.py`: reply/inline клавиатуры
+- `secopsbuddy/bot/notifier.py`: форматирование событий в уведомления
+- `secopsbuddy/bot/settings.py`: чтение `.env` настроек бота
 
 ## Поток выполнения
 
@@ -23,6 +29,8 @@
 5. Detector собирает snapshot-ы и считает `suspicion_score`
 6. Результат пишется в консоль и в специализированные логи
 7. В режиме block вызывается firewall responder
+8. События пишутся в event stream
+9. Telegram worker читает stream и рассылает алерты
 
 ## Расширяемость
 

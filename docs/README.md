@@ -13,6 +13,7 @@
 - [Архитектура](architecture.md)
 - [Операции: запуск и мониторинг](operations/monitoring.md)
 - [Операции: логирование](operations/logging.md)
+- [Операции: Telegram бот](operations/bot.md)
 - [MITRE T1030](mitre/T1030.md)
 - [План улучшений](improvements.md)
 

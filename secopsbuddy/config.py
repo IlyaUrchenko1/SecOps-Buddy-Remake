@@ -24,6 +24,10 @@ class AppConfig:
     log_actions_file: str = "logs/actions.log"
     log_events_file: str = "logs/events.log"
     mitre_log_dir: str = "logs/mitre"
+    bot_events_file: str = "runtime/bot_events.jsonl"
+    bot_pid_file: str = "runtime/bot.pid"
+    bot_log_file: str = "logs/bot.log"
+    bot_error_log_file: str = "logs/bot_errors.log"
     dry_run: bool = True
     block_private_ips: bool = False
     collector_command_preference: list[str] = field(
@@ -64,6 +68,10 @@ class AppConfig:
                 log_actions_file=str(raw.get("log_actions_file", defaults.log_actions_file)),
                 log_events_file=str(raw.get("log_events_file", defaults.log_events_file)),
                 mitre_log_dir=str(raw.get("mitre_log_dir", defaults.mitre_log_dir)),
+                bot_events_file=str(raw.get("bot_events_file", defaults.bot_events_file)),
+                bot_pid_file=str(raw.get("bot_pid_file", defaults.bot_pid_file)),
+                bot_log_file=str(raw.get("bot_log_file", defaults.bot_log_file)),
+                bot_error_log_file=str(raw.get("bot_error_log_file", defaults.bot_error_log_file)),
                 dry_run=_parse_bool(raw.get("dry_run", defaults.dry_run)),
                 block_private_ips=_parse_bool(
                     raw.get("block_private_ips", defaults.block_private_ips)
@@ -97,6 +105,10 @@ class AppConfig:
         _ensure_path_value(config.log_actions_file, "log_actions_file")
         _ensure_path_value(config.log_events_file, "log_events_file")
         _ensure_path_value(config.mitre_log_dir, "mitre_log_dir")
+        _ensure_path_value(config.bot_events_file, "bot_events_file")
+        _ensure_path_value(config.bot_pid_file, "bot_pid_file")
+        _ensure_path_value(config.bot_log_file, "bot_log_file")
+        _ensure_path_value(config.bot_error_log_file, "bot_error_log_file")
 
         return config
 

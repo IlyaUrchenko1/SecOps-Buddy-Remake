@@ -2,6 +2,8 @@
 
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
+from threading import Lock
 from typing import Any, Protocol
 
 
@@ -28,3 +30,17 @@ class LoggerEventSink:
 
     def emit(self, event: dict[str, Any]) -> None:
         self.logger.info(json.dumps(event, ensure_ascii=False))
+
+
+@dataclass(slots=True)
+class FileEventSink:
+    file_path: str
+    _lock: Lock = field(default_factory=Lock, repr=False)
+
+    def emit(self, event: dict[str, Any]) -> None:
+        path = Path(self.file_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(event, ensure_ascii=False)
+        with self._lock:
+            with path.open("a", encoding="utf-8") as f:
+                f.write(line + "\n")
