@@ -32,3 +32,8 @@ include = ["secopsbuddy*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+  "load: load-like tests for higher event volume",
+  "integration: integration tests between internal modules",
+  "e2e: end-to-end/p2p scenario tests",
+]
