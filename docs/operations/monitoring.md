@@ -49,6 +49,7 @@ python -m secopsbuddy.main --run t1030 --continuous --mode block --dry-run
 Для реальной проверки детекции на синтетическом паттерне см. отдельную инструкцию:
 
 - [Операции: реальный тест T1030](t1030-real-test.md)
+- [Полный гайд по тестированию](../testing.md)
 
 ## Telegram уведомления
 
@@ -58,3 +59,4 @@ python -m secopsbuddy.main --run t1030 --continuous --mode block --dry-run
 - при остановке детектора отправляется уведомление `detector_stopped`
 - при suspicious результате отправляется полный alert
 - при успешной блокировке отправляется уведомление `threat_mitigated`
+

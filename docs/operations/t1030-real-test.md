@@ -60,3 +60,5 @@ python scripts/t1030_test_traffic.py client \
 - По умолчанию используется localhost (`127.0.0.1`).
 - Если срабатывание слабое, увеличьте `connections` и `hold-ms`, либо временно
   снизьте `suspicion_threshold` в конфиге для калибровки.
+
+См. также: [Полный гайд по тестированию](../testing.md).

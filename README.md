@@ -33,6 +33,7 @@ python -m secopsbuddy.main --run t1030 --continuous --mode block --dry-run
 
 - [Полная инструкция по установке](docs/installation.md)
 - [Полная инструкция по настройке (включая allowlist/suppressions и cooldown)](docs/configuration.md)
+- [Полный гайд по тестированию (pytest, monitor, block, bot, чек-лист скриншотов)](docs/testing.md)
 - [Индекс всей документации](docs/README.md)
 
 ## Ограничение MVP

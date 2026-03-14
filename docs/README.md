@@ -11,6 +11,7 @@
 - [Операции: реальный тест T1030](operations/t1030-real-test.md)
 - [Операции: логирование](operations/logging.md)
 - [Операции: Telegram-бот](operations/bot.md)
+- [Тестирование проекта (pytest + практические сценарии)](testing.md)
 - [MITRE T1030](mitre/T1030.md)
 - [План улучшений](improvements.md)
 
@@ -19,4 +20,6 @@
 - для первого запуска: [Установка](installation.md);
 - для снижения false positive: [Настройка](configuration.md), разделы про allowlist/suppressions и cooldown;
 - для практического прогона детекции: [Операции: реальный тест T1030](operations/t1030-real-test.md);
+- для полного прогона тестов и подготовки скриншотов: [Тестирование проекта](testing.md);
 - для понимания модулей: [Архитектура](architecture.md).
+
