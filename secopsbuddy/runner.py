@@ -13,8 +13,9 @@ from secopsbuddy.logging_setup import (
     get_events_logger,
     get_mitre_logger,
     get_results_logger,
+    get_threats_logger,
 )
-from secopsbuddy.models import DetectionFinding
+from secopsbuddy.models import DetectionFinding, DetectionResult
 from secopsbuddy.registry import DetectorRegistry
 from secopsbuddy.responders.alert import AlertResponder
 from secopsbuddy.responders.firewall import FirewallResponder
@@ -34,6 +35,7 @@ class DetectionRunner:
         self.results_logger = get_results_logger()
         self.actions_logger = get_actions_logger()
         self.events_logger = get_events_logger()
+        self.threats_logger = get_threats_logger()
         self.event_dispatcher = EventDispatcher(
             [
                 LoggerEventSink(self.events_logger),
@@ -118,10 +120,7 @@ class DetectionRunner:
             print("[ОШИБКА] max_cycles должен быть > 0")
             return 2
 
-        print(
-            "Запущен непрерывный мониторинг. "
-            "Нажмите Ctrl+C для остановки."
-        )
+        print("Запущен непрерывный мониторинг. Нажмите Ctrl+C для остановки.")
         self.logger.info(
             "Старт непрерывного мониторинга: detector=%s mode=%s interval=%s max_cycles=%s cooldown=%s",
             detector.detector_id,
@@ -138,7 +137,7 @@ class DetectionRunner:
             while True:
                 cycle += 1
                 if not json_output:
-                    print(f"\n=== Цикл мониторинга #{cycle} ===")
+                    print(f"\n=== Цикл #{cycle} ===")
                 code = self._run_cycle(
                     detector=detector,
                     mode=mode,
@@ -180,16 +179,6 @@ class DetectionRunner:
         )
 
         result = detector.run()
-        print(AlertResponder.format_detection_result(result, json_output=json_output))
-
-        self.logger.info(
-            "Цикл завершен: detector=%s status=%s score=%.3f findings=%d cycle=%d",
-            result.detector_id,
-            result.status,
-            result.score,
-            len(result.findings),
-            cycle_number,
-        )
 
         findings_for_alerts, suppressed_count = self._apply_alert_cooldown(
             mitre_id=result.mitre_id,
@@ -207,6 +196,36 @@ class DetectionRunner:
                 self._alert_cooldown_seconds,
             )
 
+        event_status = result.status
+        event_summary = result.summary
+        if result.status == "suspicious" and not findings_for_alerts and suppressed_count > 0:
+            event_status = "clean"
+            event_summary = (
+                f"{result.summary} Повторные алерты подавлены cooldown "
+                f"({suppressed_count})."
+            )
+
+        display_result = DetectionResult(
+            detector_id=result.detector_id,
+            mitre_id=result.mitre_id,
+            detector_name=result.detector_name,
+            status=event_status,
+            score=result.score,
+            findings=findings_for_alerts,
+            summary=event_summary,
+            timestamp=result.timestamp,
+        )
+        self._print_cycle_output(display_result=display_result, json_output=json_output)
+
+        self.logger.info(
+            "Цикл завершен: detector=%s status=%s score=%.3f findings=%d cycle=%d",
+            result.detector_id,
+            event_status,
+            result.score,
+            len(findings_for_alerts),
+            cycle_number,
+        )
+
         findings_payload = [
             {
                 "remote_ip": item.remote_ip,
@@ -221,15 +240,6 @@ class DetectionRunner:
             }
             for item in findings_for_alerts
         ]
-
-        event_status = result.status
-        event_summary = result.summary
-        if result.status == "suspicious" and not findings_for_alerts and suppressed_count > 0:
-            event_status = "clean"
-            event_summary = (
-                f"{result.summary} Повторные алерты подавлены cooldown "
-                f"({suppressed_count})."
-            )
 
         result_event = {
             "event": "detection_result",
@@ -248,10 +258,19 @@ class DetectionRunner:
         self.results_logger.info(json.dumps(result_event, ensure_ascii=False))
         self.event_dispatcher.publish(result_event)
 
+        self._log_threat_findings(
+            detector_id=result.detector_id,
+            mitre_id=result.mitre_id,
+            timestamp=result.timestamp,
+            cycle_number=cycle_number,
+            mode=mode,
+            findings=findings_for_alerts,
+        )
+
         mitre_logger = get_mitre_logger(result.mitre_id)
         mitre_logger.info(json.dumps(result.to_dict(), ensure_ascii=False))
 
-        if mode == "block" and result.status == "suspicious" and result.findings:
+        if mode == "block" and event_status == "suspicious" and findings_for_alerts:
             dry_run = self.config.dry_run if dry_run_override is None else dry_run_override
             responder = FirewallResponder(
                 dry_run=dry_run,
@@ -261,7 +280,7 @@ class DetectionRunner:
 
             ips_to_block = [
                 finding.remote_ip
-                for finding in result.findings
+                for finding in findings_for_alerts
                 if finding.remote_ip not in self._blocked_ips
             ]
             actions = responder.block_ips(ips_to_block)
@@ -298,6 +317,54 @@ class DetectionRunner:
         if result.status == "error":
             return 1
         return 0
+
+    def _print_cycle_output(self, display_result: DetectionResult, json_output: bool) -> None:
+        if json_output:
+            print(AlertResponder.format_detection_result(display_result, json_output=True))
+            return
+
+        if display_result.status == "clean":
+            print(
+                f"[{display_result.timestamp}] "
+                f"{display_result.detector_id}/{display_result.mitre_id} "
+                f"status=clean score={display_result.score:.3f} | {display_result.summary}"
+            )
+            return
+
+        print(AlertResponder.format_detection_result(display_result, json_output=False))
+
+    def _log_threat_findings(
+        self,
+        detector_id: str,
+        mitre_id: str,
+        timestamp: str,
+        cycle_number: int,
+        mode: str,
+        findings: list[DetectionFinding],
+    ) -> None:
+        if not findings:
+            return
+
+        window_seconds = self.config.snapshot_count * self.config.snapshot_interval_seconds
+        for finding in findings:
+            threat_row = {
+                "event": "threat_detected",
+                "detector_id": detector_id,
+                "mitre_id": mitre_id,
+                "cycle": cycle_number,
+                "mode": mode,
+                "timestamp": timestamp,
+                "remote_ip": finding.remote_ip,
+                "remote_port": finding.remote_port,
+                "process_name": finding.process_name,
+                "pid": finding.pid,
+                "protocol": finding.protocol,
+                "score": finding.score,
+                "hit_count": finding.hit_count,
+                "distinct_local_ports": finding.distinct_local_ports,
+                "window_seconds": round(window_seconds, 3),
+            }
+            self.threats_logger.info(json.dumps(threat_row, ensure_ascii=False))
 
     def _apply_alert_cooldown(
         self,

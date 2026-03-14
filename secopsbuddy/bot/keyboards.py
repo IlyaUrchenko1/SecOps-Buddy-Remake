@@ -17,7 +17,7 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="Последние алерты"),
             ],
             [
-                KeyboardButton(text="Mute/Unmute"),
+                KeyboardButton(text="Уведомления"),
                 KeyboardButton(text="Помощь"),
             ],
         ],
@@ -28,7 +28,7 @@ def alert_inline_keyboard(mitre_id: str, ack_id: str, mitre_url: str) -> InlineK
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="ACK ✅", callback_data=f"ack:{ack_id}"),
+                InlineKeyboardButton(text="ACK", callback_data=f"ack:{ack_id}"),
                 InlineKeyboardButton(text="MITRE", url=mitre_url),
             ]
         ]

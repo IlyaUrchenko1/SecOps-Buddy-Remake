@@ -8,6 +8,7 @@ LOGGER_NAME = "secopsbuddy"
 RESULTS_LOGGER_NAME = "secopsbuddy.results"
 ACTIONS_LOGGER_NAME = "secopsbuddy.actions"
 EVENTS_LOGGER_NAME = "secopsbuddy.events"
+THREATS_LOGGER_NAME = "secopsbuddy.threats"
 MITRE_LOGGER_PREFIX = "secopsbuddy.mitre"
 
 _MITRE_LOG_DIR = Path("logs/mitre")
@@ -19,6 +20,7 @@ def setup_logging(
     results_log_file: str,
     actions_log_file: str,
     events_log_file: str,
+    threats_log_file: str,
     mitre_log_dir: str,
 ) -> logging.Logger:
     global _MITRE_LOG_DIR
@@ -40,11 +42,12 @@ def setup_logging(
     _configure_child_logger(RESULTS_LOGGER_NAME, Path(results_log_file), formatter)
     _configure_child_logger(ACTIONS_LOGGER_NAME, Path(actions_log_file), formatter)
     _configure_child_logger(EVENTS_LOGGER_NAME, Path(events_log_file), formatter)
+    _configure_child_logger(THREATS_LOGGER_NAME, Path(threats_log_file), formatter)
 
     mitre_base_logger = logging.getLogger(MITRE_LOGGER_PREFIX)
     _reset_logger(mitre_base_logger)
     mitre_base_logger.setLevel(logging.INFO)
-    mitre_base_logger.propagate = True
+    mitre_base_logger.propagate = False
 
     _clear_old_mitre_loggers()
 
@@ -63,12 +66,16 @@ def get_events_logger() -> logging.Logger:
     return logging.getLogger(EVENTS_LOGGER_NAME)
 
 
+def get_threats_logger() -> logging.Logger:
+    return logging.getLogger(THREATS_LOGGER_NAME)
+
+
 def get_mitre_logger(mitre_id: str) -> logging.Logger:
     normalized = mitre_id.lower().replace("/", "_")
     logger_name = f"{MITRE_LOGGER_PREFIX}.{normalized}"
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
-    logger.propagate = True
+    logger.propagate = False
 
     path = _MITRE_LOG_DIR / f"{normalized}.log"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,7 +94,7 @@ def _configure_child_logger(name: str, file_path: Path, formatter: logging.Forma
     logger = logging.getLogger(name)
     _reset_logger(logger)
     logger.setLevel(logging.INFO)
-    logger.propagate = True
+    logger.propagate = False
     logger.addHandler(_build_file_handler(file_path, logging.INFO, formatter))
 
 
@@ -98,7 +105,8 @@ def _reset_logger(logger: logging.Logger) -> None:
 
 def _build_stream_handler(formatter: logging.Formatter) -> logging.StreamHandler:
     handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
+    # Keep console readable; detailed telemetry stays in file logs.
+    handler.setLevel(logging.WARNING)
     handler.setFormatter(formatter)
     return handler
 
@@ -131,4 +139,4 @@ def _clear_old_mitre_loggers() -> None:
             continue
         if name.startswith(f"{MITRE_LOGGER_PREFIX}."):
             obj.handlers.clear()
-            obj.propagate = True
+            obj.propagate = False

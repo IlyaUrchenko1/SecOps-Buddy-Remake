@@ -9,6 +9,9 @@ from aiogram.types import InlineKeyboardMarkup
 from secopsbuddy.bot.keyboards import alert_inline_keyboard
 
 
+BOT_TITLE = "SecOps Buddy"
+
+
 def render_event(
     event: dict[str, Any],
 ) -> tuple[str, InlineKeyboardMarkup | None, str] | None:
@@ -21,7 +24,8 @@ def render_event(
         continuous = bool(event.get("continuous", False))
         timestamp = escape(str(event.get("timestamp", "")))
         text = (
-            "🟢 <b>Детектор запущен</b>\n"
+            f"<b>{BOT_TITLE}</b>\n"
+            "Детектор запущен\n"
             f"Техника: <b>{escape(mitre_id or 'N/A')}</b>\n"
             f"Детектор: <code>{detector_id}</code>\n"
             f"Режим: <b>{mode}</b>\n"
@@ -36,7 +40,8 @@ def render_event(
         mode = escape(str(event.get("mode", "monitor")))
         timestamp = escape(str(event.get("timestamp", "")))
         text = (
-            "🔴 <b>Детектор остановлен</b>\n"
+            f"<b>{BOT_TITLE}</b>\n"
+            "Детектор остановлен\n"
             f"Техника: <b>{escape(mitre_id or 'N/A')}</b>\n"
             f"Детектор: <code>{detector_id}</code>\n"
             f"Режим: <b>{mode}</b>\n"
@@ -57,7 +62,8 @@ def render_event(
 
         if status == "suspicious":
             lines = [
-                "⚠️ <b>Обнаружена подозрительная активность</b>",
+                f"<b>{BOT_TITLE}</b>",
+                "Обнаружена подозрительная активность",
                 f"MITRE: <b>{escape(mitre_id or 'N/A')}</b>",
                 f"Score: <b>{score}</b>",
                 f"Находок: <b>{findings_count}</b>",
@@ -71,14 +77,15 @@ def render_event(
                 proc = escape(str(finding.get("process_name", "-")))
                 f_score = escape(str(finding.get("score", "-")))
                 lines.append(
-                    f"• <code>{remote_ip}:{remote_port}</code> | proc=<code>{proc}</code> | score=<b>{f_score}</b>"
+                    f"- <code>{remote_ip}:{remote_port}</code> | proc=<code>{proc}</code> | score=<b>{f_score}</b>"
                 )
             text = "\n".join(lines)
             keyboard = _build_keyboard(mitre_id, event)
             return text, keyboard, "alert"
 
         text = (
-            "❗ <b>Ошибка в процессе детектирования</b>\n"
+            f"<b>{BOT_TITLE}</b>\n"
+            "Ошибка в процессе детектирования\n"
             f"MITRE: <b>{escape(mitre_id or 'N/A')}</b>\n"
             f"Сводка: {summary}\n"
             f"Время: <code>{timestamp}</code>"
@@ -90,7 +97,8 @@ def render_event(
         ip_value = escape(str(event.get("ip", "-")))
         timestamp = escape(str(event.get("timestamp", "")))
         text = (
-            "✅ <b>Угроза нейтрализована</b>\n"
+            f"<b>{BOT_TITLE}</b>\n"
+            "Угроза нейтрализована\n"
             f"MITRE: <b>{escape(mitre_id or 'N/A')}</b>\n"
             f"IP: <code>{ip_value}</code>\n"
             f"Время: <code>{timestamp}</code>"
@@ -105,7 +113,8 @@ def render_event(
         ip_value = escape(str(event.get("ip", "-")))
         message = escape(str(event.get("message", "")))
         text = (
-            "🧱 <b>Firewall action</b>\n"
+            f"<b>{BOT_TITLE}</b>\n"
+            "Действие firewall\n"
             f"MITRE: <b>{escape(mitre_id or 'N/A')}</b>\n"
             f"IP: <code>{ip_value}</code>\n"
             f"Сообщение: {message}"

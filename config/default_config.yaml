@@ -1,4 +1,4 @@
-snapshot_count: 8
+﻿snapshot_count: 8
 snapshot_interval_seconds: 1.0
 suspicion_threshold: 0.65
 min_hits: 5
@@ -10,6 +10,7 @@ log_error_file: logs/errors.log
 log_results_file: logs/results.log
 log_actions_file: logs/actions.log
 log_events_file: logs/events.log
+log_threats_file: logs/threats.log
 mitre_log_dir: logs/mitre
 bot_events_file: runtime/bot_events.jsonl
 bot_pid_file: runtime/bot.pid

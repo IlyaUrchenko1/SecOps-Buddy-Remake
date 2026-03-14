@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass, field
@@ -25,6 +25,7 @@ class AppConfig:
     log_results_file: str = "logs/results.log"
     log_actions_file: str = "logs/actions.log"
     log_events_file: str = "logs/events.log"
+    log_threats_file: str = "logs/threats.log"
     mitre_log_dir: str = "logs/mitre"
     bot_events_file: str = "runtime/bot_events.jsonl"
     bot_pid_file: str = "runtime/bot.pid"
@@ -77,6 +78,7 @@ class AppConfig:
                 log_results_file=str(raw.get("log_results_file", defaults.log_results_file)),
                 log_actions_file=str(raw.get("log_actions_file", defaults.log_actions_file)),
                 log_events_file=str(raw.get("log_events_file", defaults.log_events_file)),
+                log_threats_file=str(raw.get("log_threats_file", defaults.log_threats_file)),
                 mitre_log_dir=str(raw.get("mitre_log_dir", defaults.mitre_log_dir)),
                 bot_events_file=str(raw.get("bot_events_file", defaults.bot_events_file)),
                 bot_pid_file=str(raw.get("bot_pid_file", defaults.bot_pid_file)),
@@ -137,6 +139,7 @@ class AppConfig:
         _ensure_path_value(config.log_results_file, "log_results_file")
         _ensure_path_value(config.log_actions_file, "log_actions_file")
         _ensure_path_value(config.log_events_file, "log_events_file")
+        _ensure_path_value(config.log_threats_file, "log_threats_file")
         _ensure_path_value(config.mitre_log_dir, "mitre_log_dir")
         _ensure_path_value(config.bot_events_file, "bot_events_file")
         _ensure_path_value(config.bot_pid_file, "bot_pid_file")

@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
         results_log_file=config.log_results_file,
         actions_log_file=config.log_actions_file,
         events_log_file=config.log_events_file,
+        threats_log_file=config.log_threats_file,
         mitre_log_dir=config.mitre_log_dir,
     )
 

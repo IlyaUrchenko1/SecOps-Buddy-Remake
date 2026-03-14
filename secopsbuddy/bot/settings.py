@@ -18,10 +18,10 @@ class BotSettings:
     def from_env(cls, events_file: str, env_file: str = ".env") -> "BotSettings":
         load_dotenv(env_file, override=True)
 
-        token = os.getenv("SECOPSBUDDY_BOT_TOKEN", "").strip()
-        raw_ids = os.getenv("SECOPSBUDDY_BOT_ALLOWED_IDS", "").strip()
-        bot_name = os.getenv("SECOPSBUDDY_BOT_NAME", "SecOps Buddy").strip() or "SecOps Buddy"
-        events_override = os.getenv("SECOPSBUDDY_BOT_EVENTS_FILE", "").strip()
+        token = _env_value("SECOPSBUDDY_BOT_TOKEN").strip()
+        raw_ids = _env_value("SECOPSBUDDY_BOT_ALLOWED_IDS").strip()
+        bot_name = _env_value("SECOPSBUDDY_BOT_NAME", default="SecOps Buddy").strip() or "SecOps Buddy"
+        events_override = _env_value("SECOPSBUDDY_BOT_EVENTS_FILE").strip()
 
         if not token:
             raise ValueError("SECOPSBUDDY_BOT_TOKEN не задан в .env")
@@ -56,3 +56,16 @@ def _parse_chat_ids(raw_value: str) -> list[int]:
         parsed.append(int(value))
 
     return parsed
+
+
+def _env_value(name: str, default: str = "") -> str:
+    value = os.getenv(name)
+    if value is not None:
+        return value
+
+    # Handle UTF-8 BOM at the beginning of .env where key may become "\ufeff<NAME>".
+    value = os.getenv(f"\ufeff{name}")
+    if value is not None:
+        return value
+
+    return default

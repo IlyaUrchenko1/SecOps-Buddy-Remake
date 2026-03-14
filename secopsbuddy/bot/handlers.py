@@ -9,6 +9,9 @@ from secopsbuddy.bot.settings import BotSettings
 from secopsbuddy.bot.state import BotRuntimeState
 
 
+BOT_TITLE = "SecOps Buddy Bot"
+
+
 def build_router(state: BotRuntimeState, settings: BotSettings) -> Router:
     router = Router(name="secopsbuddy_bot_router")
 
@@ -19,8 +22,12 @@ def build_router(state: BotRuntimeState, settings: BotSettings) -> Router:
             return
         await message.answer(
             (
-                "SecOps Buddy Bot онлайн.\n"
-                "Используйте кнопки ниже или команды /status, /help, /mute"
+                f"<b>{BOT_TITLE}</b>\n"
+                "Система запущена и готова к работе.\n\n"
+                "Доступные команды:\n"
+                "/status - текущее состояние\n"
+                "/mute - включить/выключить mute алертов\n"
+                "/help - краткая справка"
             ),
             reply_markup=main_reply_keyboard(),
         )
@@ -31,11 +38,17 @@ def build_router(state: BotRuntimeState, settings: BotSettings) -> Router:
             await message.answer("Доступ ограничен.")
             return
         await message.answer(
-            "Команды:\n"
-            "/status — текущее состояние\n"
-            "/mute — включить/выключить временный mute алертов\n"
-            "/help — подсказка\n"
-            "Кнопки: Статус, Последние алерты, Mute/Unmute, Помощь",
+            (
+                f"<b>{BOT_TITLE}: справка</b>\n"
+                "\n"
+                "Команды:\n"
+                "/status - текущее состояние\n"
+                "/mute - включить/выключить mute алертов\n"
+                "/help - эта справка\n"
+                "\n"
+                "Кнопки:\n"
+                "Статус, Последние алерты, Уведомления, Помощь"
+            ),
             reply_markup=main_reply_keyboard(),
         )
 
@@ -56,7 +69,7 @@ def build_router(state: BotRuntimeState, settings: BotSettings) -> Router:
             return
         muted = state.toggle_mute(message.chat.id)
         await message.answer(
-            "Уведомления по алертам выключены." if muted else "Уведомления по алертам включены."
+            "Алерты для этого чата отключены." if muted else "Алерты для этого чата включены."
         )
 
     @router.message(F.text == "Статус")
@@ -70,7 +83,7 @@ def build_router(state: BotRuntimeState, settings: BotSettings) -> Router:
             return
         await message.answer(state.recent_alerts_text())
 
-    @router.message(F.text == "Mute/Unmute")
+    @router.message((F.text == "Уведомления") | (F.text == "Mute/Unmute"))
     async def btn_mute(message: Message) -> None:
         await cmd_mute(message)
 
@@ -108,8 +121,8 @@ def _is_allowed(chat_id: int, settings: BotSettings) -> bool:
 
 def _status_text(chat_id: int, state: BotRuntimeState) -> str:
     return (
-        "Статус бота:\n"
-        f"Запущен: {state.started_at}\n"
-        f"Mute для этого чата: {'включен' if state.is_muted(chat_id) else 'выключен'}\n"
-        f"Кэш алертов: {len(state.recent_alerts)}"
+        f"<b>{BOT_TITLE}: статус</b>\n"
+        f"Запущен: <code>{state.started_at}</code>\n"
+        f"Mute для этого чата: <b>{'включен' if state.is_muted(chat_id) else 'выключен'}</b>\n"
+        f"Кэш алертов: <b>{len(state.recent_alerts)}</b>"
     )

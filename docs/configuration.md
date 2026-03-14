@@ -1,4 +1,4 @@
-﻿# Настройка SecOps Buddy
+# Настройка SecOps Buddy
 
 SecOps Buddy читает YAML-конфиг и валидирует его при старте.
 
@@ -56,7 +56,7 @@ python -m secopsbuddy.main --run t1030 --continuous --config /path/to/config.yam
 
 | Параметр | Назначение |
 | --- | --- |
-| `log_file`, `log_error_file`, `log_results_file`, `log_actions_file`, `log_events_file` | Пути к логам приложения |
+| `log_file`, `log_error_file`, `log_results_file`, `log_actions_file`, `log_events_file`, `log_threats_file` | Пути к логам приложения |
 | `mitre_log_dir` | Каталог MITRE-логов |
 | `bot_events_file` | JSONL-поток событий для бота |
 | `bot_pid_file`, `bot_log_file`, `bot_error_log_file` | Файлы процесса и логов бота |
